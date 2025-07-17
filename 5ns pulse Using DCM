@@ -1,0 +1,147 @@
+library IEEE;
+
+use IEEE.STD_LOGIC_1164.ALL;
+
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+
+
+
+library UNISIM;
+
+use UNISIM.VComponents.ALL;
+
+
+
+entity dcm_pulse_gen is
+
+  generic (
+
+    HIGH_TIME : integer := 1;  -- Number of clk_out_dcm cycles pulse stays HIGH
+
+    PERIOD    : integer := 100  -- Total number of clk_out_dcm cycles for full period
+
+  );
+
+  Port (
+
+    clk_in    : in  STD_LOGIC; -- 50 MHz input clock
+
+    reset     : in  STD_LOGIC; -- Reset
+
+    pulse_out : out STD_LOGIC  -- Output pulse
+
+  );
+
+end dcm_pulse_gen;
+
+
+
+architecture Behavioral of dcm_pulse_gen is
+
+
+
+  -- DCM output
+
+  signal clk_out_dcm : STD_LOGIC;
+
+  signal clk_fb      : STD_LOGIC;
+
+
+
+  -- Counter and pulse register
+
+  signal counter     : integer range 0 to 65535 := 0;
+
+  signal pulse_reg   : STD_LOGIC := '0';
+
+
+
+begin
+
+
+
+  -- Instantiate DCM_SP primitive
+
+  my_dcm : DCM_SP
+
+    generic map (
+
+      CLKFX_MULTIPLY => 4,     -- Multiply 50 MHz × 4 = 200 MHz
+
+      CLKFX_DIVIDE   => 1,     -- No division
+
+      CLKIN_PERIOD   => 20.0,  -- 50 MHz = 20 ns
+
+      CLK_FEEDBACK   => "NONE"
+
+    )
+
+    port map (
+
+      CLKIN   => clk_in,
+
+      CLKFX   => clk_out_dcm,
+
+      RST     => reset,
+
+      LOCKED  => open,
+
+      CLKFB   => '0',
+
+      CLK0    => open
+
+    );
+
+
+
+  -- Generate adjustable pulse using generics
+
+  process(clk_out_dcm, reset)
+
+  begin
+
+    if reset = '1' then
+
+      counter   <= 0;
+
+      pulse_reg <= '0';
+
+    elsif rising_edge(clk_out_dcm) then
+
+      if counter < HIGH_TIME then
+
+        pulse_reg <= '1';
+
+      else
+
+        pulse_reg <= '0';
+
+      end if;
+
+
+
+      if counter = PERIOD - 1 then
+
+        counter <= 0;
+
+      else
+
+        counter <= counter + 1;
+
+      end if;
+
+    end if;
+
+  end process;
+
+
+
+  pulse_out <= pulse_reg;
+
+
+
+end Behavioral;
+-- UCF File --
+--NET "clk_in" LOC = "P85";    # 50 MHz input clock pin
+--NET "reset" LOC = "P79";     # Reset button or jumper
+--NET "pulse_out" LOC = "P126"; # Output pulse pin
