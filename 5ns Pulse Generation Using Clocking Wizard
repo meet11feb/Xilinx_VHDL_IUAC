@@ -1,0 +1,150 @@
+library IEEE;
+
+use IEEE.STD_LOGIC_1164.ALL;
+
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+
+
+
+entity pulse_gen_using_pll is
+
+  Port (
+
+    clk_in     : in  STD_LOGIC;   -- 50 MHz input clock
+
+    reset      : in  STD_LOGIC;   -- Reset (button or tie low)
+
+    pulse_out  : out STD_LOGIC    -- Output pulse for CRO
+
+  );
+
+end pulse_gen_using_pll;
+
+
+
+architecture Behavioral of pulse_gen_using_pll is
+
+
+
+  -- PLL output clock and lock status
+
+  signal clk_200mhz : STD_LOGIC;
+
+  signal locked     : STD_LOGIC;
+
+
+
+  -- Counter and pulse logic
+
+  signal counter    : integer := 0;
+
+  signal pulse_reg  : STD_LOGIC := '0';
+
+
+
+  -- USER SETTINGS
+
+  constant PULSE_WIDTH : integer := 1;  -- 1 cycle @ 200 MHz = 5 ns
+
+  constant PERIOD      : integer := 1000; -- 100 cycles = 500 ns period
+
+
+
+  -- PLL component (adjust name to match Clocking Wizard)
+
+  component pll_200mhz
+
+    port (
+
+      CLK_IN1  : in  STD_LOGIC;
+
+      CLK_OUT1 : out STD_LOGIC;
+
+      RESET    : in  STD_LOGIC;
+
+      LOCKED   : out STD_LOGIC
+
+    );
+
+  end component;
+
+
+
+begin
+
+
+
+  -- PLL instantiation
+
+  my_pll : pll_200mhz
+
+    port map (
+
+      CLK_IN1  => clk_in,
+
+      CLK_OUT1 => clk_200mhz,
+
+      RESET    => reset,
+
+      LOCKED   => locked
+
+    );
+
+
+
+  -- Pulse generator logic
+
+  process(clk_200mhz, reset)
+
+  begin
+
+    if reset = '1' or locked = '0' then
+
+      counter   <= 0;
+
+      pulse_reg <= '0';
+
+    elsif rising_edge(clk_200mhz) then
+
+      if counter < PULSE_WIDTH then
+
+        pulse_reg <= '1';
+
+      else
+
+        pulse_reg <= '0';
+
+      end if;
+
+
+
+      if counter >= PERIOD - 1 then
+
+        counter <= 0;
+
+      else
+
+        counter <= counter + 1;
+
+      end if;
+
+    end if;
+
+  end process;
+
+
+
+  pulse_out <= pulse_reg;
+
+
+
+end Behavioral;
+
+
+
+
+-- UCF File --
+--NET "clk_in" LOC = "P85";
+--NET "reset" LOC = "P79";
+--NET "pulse_out" LOC = "P124";
+
